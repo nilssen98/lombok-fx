@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2020 The Project Lombok Authors.
+ * Copyright (C) 2009-2023 The Project Lombok Authors.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -262,6 +262,14 @@ public class JavacAST extends AST<JavacAST, JavacNode, JCTree> {
 	 * the ones listed in the official annotation API interface. */
 	public JavacTypes getTypesUtil() {
 		return javacTypes;
+	}
+	
+	/**
+	 * @return The implementation of {@link javax.lang.model.util.Elements} of javac. Contains a few extra methods beyond
+	 * the ones listed in the official annotation API interface.
+	 */
+	public JavacElements getElementUtils() {
+		return elements;
 	}
 	
 	/** {@inheritDoc} */

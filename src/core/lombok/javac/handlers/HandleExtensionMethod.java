@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2021 The Project Lombok Authors.
+ * Copyright (C) 2012-2023 The Project Lombok Authors.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,10 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
 import static lombok.javac.handlers.JavacResolver.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
 
@@ -88,13 +90,16 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 			return;
 		}
 		final List<Extension> extensions = getExtensions(annotationNode, extensionProviders);
+		applyExtensions(typeNode, extensions, suppressBaseMethods);
+	}
+
+	void applyExtensions(JavacNode typeNode, List<Extension> extensions, boolean suppressBaseMethods) {
 		if (extensions.isEmpty()) return;
 		
-		new ExtensionMethodReplaceVisitor(annotationNode, extensions, suppressBaseMethods).replace();
+		new ExtensionMethodReplaceVisitor(typeNode, extensions, suppressBaseMethods).replace();
 		
-		annotationNode.rebuild();
+		typeNode.getAst().setChanged();
 	}
-	
 	
 	public List<Extension> getExtensions(final JavacNode typeNode, final List<Object> extensionProviders) {
 		List<Extension> extensions = new ArrayList<Extension>();
@@ -125,7 +130,7 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 		return new Extension(extensionMethods, tsym);
 	}
 	
-	private static class Extension {
+	static class Extension {
 		final List<MethodSymbol> extensionMethods;
 		final TypeSymbol extensionProvider;
 		
@@ -136,18 +141,25 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 	}
 	
 	private static class ExtensionMethodReplaceVisitor extends TreeScanner<Void, Void> {
-		final JavacNode annotationNode;
+		final JavacNode typeNode;
 		final List<Extension> extensions;
 		final boolean suppressBaseMethods;
+		final Set<String> names = new HashSet<String>();
 		
-		public ExtensionMethodReplaceVisitor(JavacNode annotationNode, List<Extension> extensions, boolean suppressBaseMethods) {
-			this.annotationNode = annotationNode;
+		public ExtensionMethodReplaceVisitor(JavacNode typeNode, List<Extension> extensions, boolean suppressBaseMethods) {
+			this.typeNode = typeNode;
 			this.extensions = extensions;
 			this.suppressBaseMethods = suppressBaseMethods;
+			
+			for (Extension extension : extensions) {
+				for (MethodSymbol methodSymbol : extension.extensionMethods) {
+					names.add(methodSymbol.name.toString());
+				}
+			}
 		}
 		
 		public void replace() {
-			annotationNode.up().get().accept(this, null);
+			typeNode.get().accept(this, null);
 		}
 		
 		@Override
@@ -160,7 +172,7 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 		}
 		
 		private void handleMethodCall(final JCMethodInvocation methodCall) {
-			JavacNode methodCallNode = annotationNode.getAst().get(methodCall);
+			JavacNode methodCallNode = typeNode.getAst().get(methodCall);
 			
 			if (methodCallNode == null) {
 				// This should mean the node does not exist in the source at all. This is the case for generated nodes, such as implicit super() calls.
@@ -172,6 +184,8 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 			TypeSymbol surroundingTypeSymbol = ((JCClassDecl)surroundingType.get()).sym;
 			JCExpression receiver = receiverOf(methodCall);
 			String methodName = methodNameOf(methodCall);
+			
+			if (!names.contains(methodName)) return;
 			
 			if ("this".equals(receiver.toString()) || "this".equals(methodName) || "super".equals(methodName)) return;
 			Map<JCTree, JCTree> resolution = new JavacResolution(methodCallNode.getContext()).resolveMethodMember(methodCallNode);
@@ -194,7 +208,7 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 			}
 			if (sym instanceof ClassSymbol) return;
 			
-			Types types = Types.instance(annotationNode.getContext());
+			Types types = Types.instance(typeNode.getContext());
 			for (Extension extension : extensions) {
 				TypeSymbol extensionProvider = extension.extensionProvider;
 				if (surroundingTypeSymbol == extensionProvider) continue;
@@ -205,7 +219,7 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 					Type firstArgType = types.erasure(extensionMethodType.asMethodType().argtypes.get(0));
 					if (!types.isAssignable(receiverType, firstArgType)) continue;
 					methodCall.args = methodCall.args.prepend(receiver);
-					methodCall.meth = chainDotsString(annotationNode, extensionProvider.toString() + "." + methodName);
+					methodCall.meth = chainDotsString(typeNode, extensionProvider.toString() + "." + methodName);
 					recursiveSetGeneratedBy(methodCall.meth, methodCallNode);
 					return;
 				}
@@ -222,7 +236,7 @@ public class HandleExtensionMethod extends JavacAnnotationHandler<ExtensionMetho
 		
 		private JCExpression receiverOf(final JCMethodInvocation methodCall) {
 			if (methodCall.meth instanceof JCIdent) {
-				return annotationNode.getTreeMaker().Ident(annotationNode.toName("this"));
+				return typeNode.getTreeMaker().Ident(typeNode.toName("this"));
 			} else {
 				return ((JCFieldAccess) methodCall.meth).selected;
 			}

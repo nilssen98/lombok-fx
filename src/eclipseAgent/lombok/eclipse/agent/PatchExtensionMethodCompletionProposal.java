@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 The Project Lombok Authors.
+ * Copyright (C) 2012-2023 The Project Lombok Authors.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -92,6 +92,7 @@ public class PatchExtensionMethodCompletionProposal {
 				Annotation ann = getAnnotation(ExtensionMethod.class, typeNode);
 				extensions.addAll(0, getApplicableExtensionMethods(typeNode, ann, firstParameterType));
 			}
+			extensions.addAll(0, getApplicableGlobalExtensionMethods(getTypeNode(decl), firstParameterType));
 		}
 		return extensions;
 	}

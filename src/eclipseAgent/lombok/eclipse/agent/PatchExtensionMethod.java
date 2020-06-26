@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2022 The Project Lombok Authors.
+ * Copyright (C) 2012-2023 The Project Lombok Authors.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import lombok.ConfigurationKeys;
 import lombok.core.AST.Kind;
 import lombok.core.AnnotationValues;
 import lombok.core.AnnotationValues.AnnotationValueDecodeFail;
 import lombok.core.FieldAugment;
+import lombok.core.configuration.TypeName;
+import lombok.eclipse.Eclipse;
 import lombok.eclipse.EclipseAST;
 import lombok.eclipse.EclipseNode;
 import lombok.eclipse.TransformEclipseAST;
@@ -219,6 +222,23 @@ public class PatchExtensionMethod {
 		return extensions;
 	}
 	
+	static List<Extension> getApplicableGlobalExtensionMethods(EclipseNode typeNode, TypeBinding receiverType) {
+		List<Extension> extensions = new ArrayList<Extension>();
+		if (typeNode != null && receiverType != null) {
+			List<TypeName> configuration = typeNode.getAst().readConfiguration(ConfigurationKeys.GLOBAL_EXTENSION_METHODS);
+			for (TypeName typeName : configuration) {
+				Binding binding = ((TypeDeclaration) typeNode.get()).scope.getTypeOrPackage(Eclipse.fromQualifiedName(typeName.getName()));
+				if (binding instanceof ReferenceBinding) {
+					Extension e = new Extension();
+					e.extensionMethods = getApplicableExtensionMethodsDefinedInProvider(typeNode, (ReferenceBinding) binding, receiverType);
+					e.suppressBaseMethods = false;
+					extensions.add(e);
+				}
+			}
+		}
+		return extensions;
+	}
+	
 	private static List<MethodBinding> getApplicableExtensionMethodsDefinedInProvider(EclipseNode typeNode, ReferenceBinding extensionMethodProviderBinding,
 			TypeBinding receiverType) {
 		
@@ -265,6 +285,7 @@ public class PatchExtensionMethod {
 				if (owningType == null) owningType = typeNode;
 			}
 		}
+		extensions.addAll(0, getApplicableGlobalExtensionMethods(getTypeNode(decl), methodCall.receiver.resolvedType));
 		
 		boolean skip = false;
 		

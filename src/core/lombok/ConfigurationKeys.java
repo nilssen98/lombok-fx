@@ -592,6 +592,13 @@ public class ConfigurationKeys {
 	 */
 	public static final ConfigurationKey<FlagUsageType> EXTENSION_METHOD_FLAG_USAGE = new ConfigurationKey<FlagUsageType>("lombok.extensionMethod.flagUsage", "Emit a warning or error if @ExtensionMethod is used.") {};
 	
+	/**
+	 * lombok configuration: {@code lombok.globalExtensionMethods} += &lt;TypeName: fully-qualified annotation class name&gt;.
+	 *
+	 * All types whose static methods will be exposed as global extension methods.
+	 */
+	public static final ConfigurationKey<List<TypeName>> GLOBAL_EXTENSION_METHODS = new ConfigurationKey<List<TypeName>>("lombok.globalExtensionMethods", "All types whose static methods will be exposed as global extension methods.") {};
+	
 	// ----- FieldDefaults -----
 	
 	/**
