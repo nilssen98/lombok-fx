@@ -29,10 +29,14 @@ import org.mangosdk.spi.ProviderFor;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
+import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
+import com.sun.tools.javac.tree.JCTree.JCIf;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
+import com.sun.tools.javac.tree.JCTree.JCReturn;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
+import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
@@ -96,6 +100,35 @@ public class HandlePostGeneratedConstructor extends JavacAnnotationHandler<PostG
 			constructor.body.stats = appendToList(constructor.body.stats, statement);
 			constructor.thrown = appendToList(constructor.thrown, method.thrown);
 			
+			final ListBuffer<JCReturn> returns = new ListBuffer<JCReturn>();
+			constructor.accept(new TreeScanner() {
+				@Override public void scan(JCTree tree) {
+					if (tree != null) {
+						if (tree.getClass().getName().equals("com.sun.tools.javac.tree.JCTree$JCLambda")) return;
+					}
+					super.scan(tree);
+				}
+				@Override public void visitClassDef(JCClassDecl arg0) {
+					return;
+				}
+				
+				@Override public void visitReturn(JCReturn tree) {
+					super.visitReturn(tree);
+					returns.add(tree);
+				}
+				
+			});
+			
+			for (JCReturn jcReturn : returns) {
+				JCTree directUp = typeNode.getAst().get(jcReturn).directUp().get();
+				if (directUp instanceof JCIf) {
+					JCIf jcIf = (JCIf) directUp;
+					JCBlock block = maker.Block(0, List.of(jcIf.thenpart));
+					block.stats = appendToList(List.of(statement), block.stats);
+					jcIf.thenpart = block;
+				}
+			}
+			
 			typeNode.getAst().get(constructor).rebuild();
 		}
 	}
@@ -107,7 +140,7 @@ public class HandlePostGeneratedConstructor extends JavacAnnotationHandler<PostG
 			for (JCTree def : type.defs) {
 				if (def instanceof JCMethodDecl) {
 					JCMethodDecl methodDecl = (JCMethodDecl) def;
-					if (methodDecl.name.toString().equals("<init>") && getGeneratedBy(methodDecl) != null) {
+					if (methodDecl.name.toString().equals("<init>")) { //&& getGeneratedBy(methodDecl) != null) {
 						constructors.add(methodDecl);
 					}
 				}
