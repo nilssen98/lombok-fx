@@ -169,7 +169,7 @@ public class JavacHandlerUtil {
 		if (node == null) return null;
 		if (source == null) JCTree_generatedNode.clear(node);
 		else JCTree_generatedNode.set(node, source);
-		if (source != null && (!inNetbeansEditor(context) || (node instanceof JCVariableDecl && (((JCVariableDecl) node).mods.flags & Flags.PARAMETER) != 0))) node.pos = source.pos;
+		if (source != null && !(node instanceof JCExpression) && (!inNetbeansEditor(context) || (node instanceof JCVariableDecl && (((JCVariableDecl) node).mods.flags & Flags.PARAMETER) != 0))) node.pos = source.pos;
 		return node;
 	}
 	
