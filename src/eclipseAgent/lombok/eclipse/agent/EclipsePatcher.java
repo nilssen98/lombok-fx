@@ -226,6 +226,19 @@ public class EclipsePatcher implements AgentLauncher.AgentLaunchable {
 			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.CodeStyleFixCore$CodeStyleVisitor", "visit", "boolean", "org.eclipse.jdt.core.dom.TypeDeclaration"))
 			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.CodeStyleFixCore$CodeStyleVisitor", "visit", "boolean", "org.eclipse.jdt.core.dom.QualifiedName"))
 			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.CodeStyleFixCore$CodeStyleVisitor", "visit", "boolean", "org.eclipse.jdt.core.dom.SimpleName"))
+			// Cleanup to convert inner classes to static inner classes
+			.target(new MethodTarget("org.eclipse.jdt.internal.ui.fix.StaticInnerClassCleanUp$1", "visit", "boolean", "org.eclipse.jdt.core.dom.TypeDeclaration"))
+			// Cleanup to use var for local variables
+			.target(new MethodTarget("org.eclipse.jdt.internal.ui.fix.VarCleanUp$1", "visit", "boolean", "org.eclipse.jdt.core.dom.VariableDeclarationStatement"))
+			.target(new MethodTarget("org.eclipse.jdt.internal.ui.fix.VarCleanUp$1", "visit", "boolean", "org.eclipse.jdt.core.dom.VariableDeclarationExpression"))
+			.target(new MethodTarget("org.eclipse.jdt.internal.ui.fix.VarCleanUp$1", "visit", "boolean", "org.eclipse.jdt.core.dom.SingleVariableDeclaration"))
+			// Cleanup to convert if else to switch
+			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.SwitchFixCore$SwitchStatementsFinder", "visit", "boolean", "org.eclipse.jdt.core.dom.Block"))
+			// Cleanup to convert switch to switch expression
+			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.SwitchExpressionsFixCore$SwitchStatementsFinder", "visit", "boolean", "org.eclipse.jdt.core.dom.SwitchStatement"))
+			// Cleanup to add/remove parenthesis
+			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.ExpressionsFix$UnnecessaryParenthesisVisitor", "visit", "boolean", "org.eclipse.jdt.core.dom.ParenthesizedExpression"))
+			.target(new MethodTarget("org.eclipse.jdt.internal.corext.fix.ExpressionsFix$MissingParenthesisVisitor", "postVisit", "void", "org.eclipse.jdt.core.dom.ASTNode"))
 			// if a generated node has children we can just ignore them as well;
 			.decisionMethod(new Hook("lombok.launch.PatchFixesHider$PatchFixes", "isGenerated", "boolean", "org.eclipse.jdt.core.dom.ASTNode"))
 			.request(StackRequest.PARAM1)
