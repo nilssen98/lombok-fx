@@ -130,7 +130,7 @@ public class HandleVal extends JavacASTAdapter {
 					}
 					JavacResolution resolver = new JavacResolution(localNode.getContext());
 					try {
-						type = ((JCExpression) resolver.resolveMethodMember(localNode).get(local.init)).type;
+						type = resolver.resolveSingleMethodMember(localNode, local.init).type;
 					} catch (RuntimeException e) {
 						System.err.println("Exception while resolving: " + localNode + "(" + localNode.getFileName() + ")");
 						throw e;
@@ -141,7 +141,7 @@ public class HandleVal extends JavacASTAdapter {
 						try {
 							JavacResolution resolver = new JavacResolution(localNode.getContext());
 							local.type = Symtab.instance(localNode.getContext()).unknownType;
-							type = ((JCExpression) resolver.resolveMethodMember(localNode).get(local.init)).type;
+							type = resolver.resolveSingleMethodMember(localNode, local.init).type;
 						} catch (RuntimeException e) {
 							System.err.println("Exception while resolving: " + localNode + "(" + localNode.getFileName() + ")");
 							throw e;
@@ -151,7 +151,7 @@ public class HandleVal extends JavacASTAdapter {
 			} else {
 				if (rhsOfEnhancedForLoop.type == null) {
 					JavacResolution resolver = new JavacResolution(localNode.getContext());
-					type = ((JCExpression) resolver.resolveMethodMember(localNode.directUp()).get(rhsOfEnhancedForLoop)).type;
+					type = resolver.resolveSingleMethodMember(localNode.directUp(), rhsOfEnhancedForLoop).type;
 				} else {
 					type = rhsOfEnhancedForLoop.type;
 				}

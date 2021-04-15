@@ -142,6 +142,14 @@ public class JavacResolution {
 	}
 	
 	public Map<JCTree, JCTree> resolveMethodMember(JavacNode node) {
+		return resolveMethodMember(node, null);
+	}
+	
+	public JCTree resolveSingleMethodMember(JavacNode node, JCTree target) {
+		return resolveMethodMember(node, target).get(target);
+	}
+
+	private Map<JCTree, JCTree> resolveMethodMember(JavacNode node, JCTree target) {
 		ArrayDeque<JCTree> stack = new ArrayDeque<JCTree>();
 		
 		{
@@ -157,7 +165,7 @@ public class JavacResolution {
 			EnvFinder finder = new EnvFinder(node.getContext());
 			while (!stack.isEmpty()) stack.pop().accept(finder);
 			
-			TreeMirrorMaker mirrorMaker = new TreeMirrorMaker(node.getTreeMaker(), node.getContext());
+			TreeMirrorMaker mirrorMaker = new TreeMirrorMaker(node.getTreeMaker(), node.getContext(), target);
 			JCTree copy = mirrorMaker.copy(finder.copyAt());
 			Log log = Log.instance(node.getContext());
 			JavaFileObject oldFileObject = log.useSource(((JCCompilationUnit) node.top().get()).getSourceFile());

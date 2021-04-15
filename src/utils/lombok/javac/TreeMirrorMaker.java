@@ -36,6 +36,7 @@ import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.ListBuffer;
 
 /**
  * Makes a copy of any AST node, with some exceptions.
@@ -49,9 +50,16 @@ import com.sun.tools.javac.util.List;
  */
 public class TreeMirrorMaker extends TreeCopier<Void> {
 	private final IdentityHashMap<JCTree, JCTree> originalToCopy = new IdentityHashMap<JCTree, JCTree>();
+	private JCTree target;
+	private boolean stop = false;
 	
 	public TreeMirrorMaker(JavacTreeMaker maker, Context context) {
+		this(maker, context, null);
+	}
+	
+	public TreeMirrorMaker(JavacTreeMaker maker, Context context, JCTree target) {
 		super(maker.getUnderlyingTreeMaker());
+		this.target = target;
 	}
 	
 	@Override public <T extends JCTree> T copy(T original) {
@@ -62,6 +70,9 @@ public class TreeMirrorMaker extends TreeCopier<Void> {
 	
 	@Override public <T extends JCTree> T copy(T original, Void p) {
 		T copy = super.copy(original, p);
+		if (original == target) {
+			stop = true;
+		}
 		originalToCopy.put(original, copy);
 		return copy;
 	}
@@ -71,18 +82,24 @@ public class TreeMirrorMaker extends TreeCopier<Void> {
 		if (originals != null) {
 			Iterator<T> it1 = originals.iterator();
 			Iterator<T> it2 = copies.iterator();
-			while (it1.hasNext()) originalToCopy.put(it1.next(), it2.next());
+			while (it1.hasNext() && it2.hasNext()) originalToCopy.put(it1.next(), it2.next());
 		}
 		return copies;
 	}
 	
 	@Override public <T extends JCTree> List<T> copy(List<T> originals, Void p) {
-		List<T> copies = super.copy(originals, p);
-		if (originals != null) {
-			Iterator<T> it1 = originals.iterator();
-			Iterator<T> it2 = copies.iterator();
-			while (it1.hasNext()) originalToCopy.put(it1.next(), it2.next());
-		}
+        if (originals == null)
+            return null;
+        ListBuffer<T> lb = new ListBuffer<T>();
+        for (T tree: originals) {
+        	if (stop) break;
+            lb.append(copy(tree, p));
+        }
+		
+		List<T> copies = lb.toList();
+		Iterator<T> it1 = originals.iterator();
+		Iterator<T> it2 = copies.iterator();
+		while (it1.hasNext() && it2.hasNext()) originalToCopy.put(it1.next(), it2.next());
 		return copies;
 	}
 	
