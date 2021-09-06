@@ -1047,7 +1047,7 @@ public class HandleBuilder extends EclipseAnnotationHandler<Builder> {
 			job.sourceNode, methodAnnsList, bfd.annotations != null ? Arrays.asList(copyAnnotations(source, bfd.annotations)) : Collections.<Annotation>emptyList());
 		if (job.checkerFramework.generateCalledMethods()) setter.receiver = generateNotCalledReceiver(job, setterName);
 		if (job.sourceNode.up().getKind() == Kind.METHOD) {
-			copyJavadocFromParam(bfd.originalFieldNode.up(), setter, td, bfd.name.toString());
+			copyJavadocFromParam(bfd.originalFieldNode.up(), setter, td, new String(bfd.name));
 		} else {
 			copyJavadoc(bfd.originalFieldNode, setter, td, CopyJavadoc.SETTER, true);
 		}

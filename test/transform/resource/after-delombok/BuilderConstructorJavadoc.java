@@ -10,8 +10,9 @@ class BuilderConstructorJavadoc<T> {
 	 *        {@code @code} or <code>tags</code>
 	 * @param predef don't copy this one
 	 * @param predefWithJavadoc don't copy this one
+	 * @param last also copy last param
 	 */
-	BuilderConstructorJavadoc(int basic, int multiline, int predef, int predefWithJavadoc) {
+	BuilderConstructorJavadoc(int basic, int multiline, int predef, int predefWithJavadoc, int last) {
 	}
 
 
@@ -24,6 +25,8 @@ class BuilderConstructorJavadoc<T> {
 		private int predef;
 		@java.lang.SuppressWarnings("all")
 		private int predefWithJavadoc;
+		@java.lang.SuppressWarnings("all")
+		private int last;
 
 		public BuilderConstructorJavadocBuilder<T> predef(final int x) {
 			this.predef = x;
@@ -66,15 +69,25 @@ class BuilderConstructorJavadoc<T> {
 			return this;
 		}
 
+		/**
+		 * @param last also copy last param
+		 * @return {@code this}.
+		 */
+		@java.lang.SuppressWarnings("all")
+		public BuilderConstructorJavadoc.BuilderConstructorJavadocBuilder<T> last(final int last) {
+			this.last = last;
+			return this;
+		}
+
 		@java.lang.SuppressWarnings("all")
 		public BuilderConstructorJavadoc<T> build() {
-			return new BuilderConstructorJavadoc<T>(this.basic, this.multiline, this.predef, this.predefWithJavadoc);
+			return new BuilderConstructorJavadoc<T>(this.basic, this.multiline, this.predef, this.predefWithJavadoc, this.last);
 		}
 
 		@java.lang.Override
 		@java.lang.SuppressWarnings("all")
 		public java.lang.String toString() {
-			return "BuilderConstructorJavadoc.BuilderConstructorJavadocBuilder(basic=" + this.basic + ", multiline=" + this.multiline + ", predef=" + this.predef + ", predefWithJavadoc=" + this.predefWithJavadoc + ")";
+			return "BuilderConstructorJavadoc.BuilderConstructorJavadocBuilder(basic=" + this.basic + ", multiline=" + this.multiline + ", predef=" + this.predef + ", predefWithJavadoc=" + this.predefWithJavadoc + ", last=" + this.last + ")";
 		}
 	}
 
