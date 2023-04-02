@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -euo pipefail
 echo 'This will build a project with a multi release jar dependency. If the compilation works without error or warning, lombok is working as designed.'
 mkdir -p out/javac
