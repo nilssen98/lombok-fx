@@ -1,0 +1,43 @@
+name: JDK21 Tests
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron:  '30 11 * * *'
+
+jobs:
+  test-javac:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Set up JDK 21-ea
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: 21
+          version: latest
+          
+      - name: Install Ant
+        run: |
+          wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.10.13-bin.zip
+          unzip apache-ant-1.10.13-bin.zip -d "${HOME}"
+          echo "ANT_HOME=${HOME}/apache-ant-1.10.13" >> $GITHUB_ENV
+          echo "${HOME}/apache-ant-1.10.13/bin" >> $GITHUB_PATH
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ivyCache
+            lib
+          key: ${{ runner.os }}-${{ hashFiles('**/ivy.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-
+
+        
+      - name: Run tests
+        run: ant -noinput test.javacCurrent
