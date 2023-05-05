@@ -223,6 +223,7 @@ This buildfile is part of projectlombok.org. It takes care of compiling and buil
 		<mkdir dir="build/lombok-main/META-INF/services" />
 		<echo file="build/lombok-main/META-INF/services/javax.annotation.processing.Processor">lombok.launch.AnnotationProcessorHider$AnnotationProcessor
 lombok.launch.AnnotationProcessorHider$ClaimingProcessor</echo>
+		<echo file="build/lombok-main/META-INF/services/com.sun.source.util.Plugin">lombok.launch.CompilerPlugin</echo>
 		<mkdir dir="build/lombok-main/META-INF/gradle" />
 		<echo file="build/lombok-main/META-INF/gradle/incremental.annotation.processors">lombok.launch.AnnotationProcessorHider$AnnotationProcessor,isolating
 lombok.launch.AnnotationProcessorHider$ClaimingProcessor,isolating</echo>

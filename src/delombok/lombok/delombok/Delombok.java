@@ -63,8 +63,11 @@ import lombok.javac.Javac;
 import lombok.javac.JavacAugments;
 import lombok.javac.LombokOptions;
 import lombok.javac.apt.LombokProcessor;
+import lombok.launch.CompilerPlugin;
 import lombok.permit.Permit;
 
+import com.sun.source.util.JavacTask;
+import com.sun.tools.javac.api.BasicJavacTask;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.comp.Todo;
 import com.sun.tools.javac.file.BaseFileManager;
@@ -744,6 +747,12 @@ public class Delombok {
 				((BaseFileManager) jfm_).setContext(context); // reinit with options
 				((BaseFileManager) jfm_).handleOptions(args.getDeferredFileManagerOptions());
 			}
+		}
+		
+		if (Javac.getJavaCompilerVersion() >= 8) {
+			JavacTask javacTask = BasicJavacTask.instance(context);
+			CompilerPlugin p = new CompilerPlugin();
+			p.init(javacTask);
 		}
 		
 		if (Javac.getJavaCompilerVersion() < 9) {

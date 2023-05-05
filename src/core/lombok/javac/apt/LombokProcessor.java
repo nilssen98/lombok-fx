@@ -457,6 +457,7 @@ public class LombokProcessor extends AbstractProcessor {
 		Object jdkCompilerModule = getJdkCompilerModule();
 		Object ownModule = getOwnModule();
 		String[] allPkgs = {
+			"com.sun.tools.javac.api",
 			"com.sun.tools.javac.code",
 			"com.sun.tools.javac.comp",
 			"com.sun.tools.javac.file",

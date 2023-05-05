@@ -34,4 +34,5 @@ public class JavaCompiler {
 	public void processAnnotations(List<JCCompilationUnit> roots, Collection<String> classnames) {}
 	public void close() {}
 	public List<JCCompilationUnit> initModules(List<JCCompilationUnit> roots) { return null; }
+	public static JavaCompiler instance(Context context) { return null; }
 }
