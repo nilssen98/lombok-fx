@@ -1,3 +1,4 @@
+//version 8:
 package pkg;
 import lombok.experimental.UtilityClass;
 import static pkg.StaticImport.test;
