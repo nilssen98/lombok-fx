@@ -12,6 +12,8 @@ import lombok.permit.Permit;
 
 public class LombokLog extends Log {
 	
+	private boolean defer = true;
+	
 	protected LombokLog(Context context) {
 		super(context);
 	}
@@ -49,9 +51,15 @@ public class LombokLog extends Log {
 	
 	@Override
 	public void report(JCDiagnostic diagnostic) {
-		Reflect.markAsRecoverable(diagnostic);
+		if (defer) {
+			Reflect.markAsRecoverable(diagnostic);
+		}
 		
 		super.report(diagnostic);
+	}
+	
+	public void stopDefer() {
+		defer = false;
 	}
 	
 	private static class Reflect {
