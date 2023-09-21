@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2019 The Project Lombok Authors.
+ * Copyright (C) 2009-2023 The Project Lombok Authors.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,10 @@
  */
 package lombok.javac;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.SortedSet;
+import java.util.Set;
 
 import javax.annotation.processing.Messager;
 
@@ -42,30 +44,45 @@ import lombok.core.LombokConfiguration;
 public class JavacTransformer {
 	private final HandlerLibrary handlers;
 	private final Messager messager;
+	private final CleanupRegistry cleanup;
 	
-	public JavacTransformer(Messager messager, Trees trees) {
+	public JavacTransformer(Messager messager, Trees trees, CleanupRegistry cleanup) {
 		this.messager = messager;
 		this.handlers = HandlerLibrary.load(messager, trees);
+		this.cleanup = cleanup;
 	}
 	
-	public SortedSet<Long> getPriorities() {
-		return handlers.getPriorities();
-	}
-	
-	public SortedSet<Long> getPrioritiesRequiringResolutionReset() {
-		return handlers.getPrioritiesRequiringResolutionReset();
-	}
-	
-	public void transform(long priority, Context context, List<JCCompilationUnit> compilationUnits, CleanupRegistry cleanup) {
+	public void transform(Context context, List<JCCompilationUnit> compilationUnits) {
 		if (compilationUnits.isEmpty()) {
 			return;
 		}
 		JavacAST.ErrorLog errorLog = JavacAST.ErrorLog.create(messager, context);
+		Set<JCCompilationUnit> skip = Collections.newSetFromMap(new IdentityHashMap<JCCompilationUnit, Boolean>());
+		// Step 1: Run all normal handlers file by file
 		for (JCCompilationUnit unit : compilationUnits) {
-			if (!Boolean.TRUE.equals(LombokConfiguration.read(ConfigurationKeys.LOMBOK_DISABLE, JavacAST.getAbsoluteFileLocation(unit)))) {
+			if (Boolean.TRUE.equals(LombokConfiguration.read(ConfigurationKeys.LOMBOK_DISABLE, JavacAST.getAbsoluteFileLocation(unit)))) {
+				skip.add(unit);
+				continue;
+			}
+			
+			JavacAST ast = new JavacAST(errorLog, context, unit, cleanup);
+			for (Long prio : handlers.getPrioritiesRequiringNoResolution()) {
+				ast.traverse(new AnnotationVisitor(prio));
+				handlers.callASTVisitors(ast, prio);
+			}
+			if (ast.isChanged()) LombokOptions.markChanged(context, (JCCompilationUnit) ast.top().get());
+		}
+		
+		// Step 2: Run all resolution based handlers priority by priority
+		for (Long prio : handlers.getPrioritiesRequiringResolutionReset()) {
+			for (JCCompilationUnit unit : compilationUnits) {
+				if (skip.contains(unit)) {
+					continue;
+				}
+				
 				JavacAST ast = new JavacAST(errorLog, context, unit, cleanup);
-				ast.traverse(new AnnotationVisitor(priority));
-				handlers.callASTVisitors(ast, priority);
+				ast.traverse(new AnnotationVisitor(prio));
+				handlers.callASTVisitors(ast, prio);
 				if (ast.isChanged()) LombokOptions.markChanged(context, (JCCompilationUnit) ast.top().get());
 			}
 		}

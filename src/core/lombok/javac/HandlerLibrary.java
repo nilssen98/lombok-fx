@@ -127,6 +127,7 @@ public class HandlerLibrary {
 	}
 	
 	private SortedSet<Long> priorities;
+	private SortedSet<Long> prioritiesRequiringNoResolution;
 	private SortedSet<Long> prioritiesRequiringResolutionReset;
 	
 	public SortedSet<Long> getPriorities() {
@@ -135,6 +136,10 @@ public class HandlerLibrary {
 	
 	public SortedSet<Long> getPrioritiesRequiringResolutionReset() {
 		return prioritiesRequiringResolutionReset;
+	}
+	
+	public SortedSet<Long> getPrioritiesRequiringNoResolution() {
+		return prioritiesRequiringNoResolution;
 	}
 	
 	private void calculatePriorities() {
@@ -152,6 +157,8 @@ public class HandlerLibrary {
 		}
 		this.priorities = Collections.unmodifiableSortedSet(set);
 		this.prioritiesRequiringResolutionReset = Collections.unmodifiableSortedSet(resetNeeded);
+		set.removeAll(resetNeeded);
+		this.prioritiesRequiringNoResolution = Collections.unmodifiableSortedSet(set);
 	}
 	
 	/**

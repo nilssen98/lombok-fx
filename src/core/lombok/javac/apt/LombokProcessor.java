@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2020 The Project Lombok Authors.
+ * Copyright (C) 2009-2023 The Project Lombok Authors.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +29,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Messager;
@@ -80,6 +79,7 @@ public class LombokProcessor extends AbstractProcessor {
 	private JavacTransformer transformer;
 	private Trees trees;
 	private boolean lombokDisabled = false;
+	private CleanupRegistry cleanup = new CleanupRegistry();
 	
 	/** {@inheritDoc} */
 	@Override public void init(ProcessingEnvironment procEnv) {
@@ -95,17 +95,7 @@ public class LombokProcessor extends AbstractProcessor {
 
 		placePostCompileAndDontMakeForceRoundDummiesHook();
 		trees = Trees.instance(javacProcessingEnv);
-		transformer = new JavacTransformer(procEnv.getMessager(), trees);
-		SortedSet<Long> p = transformer.getPriorities();
-		if (p.isEmpty()) {
-			this.priorityLevels = new long[] {0L};
-			this.priorityLevelsRequiringResolutionReset = new HashSet<Long>();
-		} else {
-			this.priorityLevels = new long[p.size()];
-			int i = 0;
-			for (Long prio : p) this.priorityLevels[i++] = prio;
-			this.priorityLevelsRequiringResolutionReset = transformer.getPrioritiesRequiringResolutionReset();
-		}
+		transformer = new JavacTransformer(procEnv.getMessager(), trees, cleanup);
 	}
 	
 	private static final String JPE = "com.sun.tools.javac.processing.JavacProcessingEnvironment";
@@ -287,11 +277,6 @@ public class LombokProcessor extends AbstractProcessor {
 		}
 	}
 	
-	private final IdentityHashMap<JCCompilationUnit, Long> roots = new IdentityHashMap<JCCompilationUnit, Long>();
-	private long[] priorityLevels;
-	private Set<Long> priorityLevelsRequiringResolutionReset;
-	private CleanupRegistry cleanup = new CleanupRegistry();
-	
 	/** {@inheritDoc} */
 	@Override public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 		if (lombokDisabled) return false;
@@ -300,73 +285,14 @@ public class LombokProcessor extends AbstractProcessor {
 			return false;
 		}
 		
-		// We have: A sorted set of all priority levels: 'priorityLevels'
-		
-		// Step 1: Take all CUs which aren't already in the map. Give them the first priority level.
-		
+		Set<JCCompilationUnit> knownCus = Collections.newSetFromMap(new IdentityHashMap<JCCompilationUnit, Boolean>());
+		List<JCCompilationUnit> cusForThisRound = new ArrayList<JCCompilationUnit>();
 		for (Element element : roundEnv.getRootElements()) {
 			JCCompilationUnit unit = toUnit(element);
-			if (unit == null) continue;
-			if (roots.containsKey(unit)) continue;
-			roots.put(unit, priorityLevels[0]);
+			if (unit != null && knownCus.add(unit)) cusForThisRound.add(unit);
 		}
-		
-		while (true) {
-			// Step 2: For all CUs (in the map, not the roundEnv!), run them across all handlers at their current prio level.
-			
-			for (long prio : priorityLevels) {
-				List<JCCompilationUnit> cusForThisRound = new ArrayList<JCCompilationUnit>();
-				for (Map.Entry<JCCompilationUnit, Long> entry : roots.entrySet()) {
-					Long prioOfCu = entry.getValue();
-					if (prioOfCu == null || prioOfCu != prio) continue;
-					cusForThisRound.add(entry.getKey());
-				}
-				transformer.transform(prio, javacProcessingEnv.getContext(), cusForThisRound, cleanup);
-			}
-			
-			// Step 3: Push up all CUs to the next level. Set level to null if there is no next level.
-			
-			Set<Long> newLevels = new HashSet<Long>();
-			for (int i = priorityLevels.length - 1; i >= 0; i--) {
-				Long curLevel = priorityLevels[i];
-				Long nextLevel = (i == priorityLevels.length - 1) ? null : priorityLevels[i + 1];
-				List<JCCompilationUnit> cusToAdvance = new ArrayList<JCCompilationUnit>();
-				for (Map.Entry<JCCompilationUnit, Long> entry : roots.entrySet()) {
-					if (curLevel.equals(entry.getValue())) {
-						cusToAdvance.add(entry.getKey());
-						newLevels.add(nextLevel);
-					}
-				}
-				for (JCCompilationUnit unit : cusToAdvance) {
-					roots.put(unit, nextLevel);
-				}
-			}
-			newLevels.remove(null);
-			
-			// Step 4: If ALL values are null, quit. Else, either do another loop right now or force a resolution reset by forcing a new round in the annotation processor.
-			
-			if (newLevels.isEmpty()) return false;
-			newLevels.retainAll(priorityLevelsRequiringResolutionReset);
-			if (!newLevels.isEmpty()) {
-				// Force a new round to reset resolution. The next round will cause this method (process) to be called again.
-				forceNewRound(javacFiler);
-				return false;
-			}
-			// None of the new levels need resolution, so just keep going.
-		}
-	}
-	
-	private int dummyCount = 0;
-	private void forceNewRound(JavacFiler filer) {
-		if (!filer.newFiles()) {
-			try {
-				filer.getGeneratedSourceNames().add("lombok.dummy.ForceNewRound" + (dummyCount++));
-			} catch (Exception e) {
-				e.printStackTrace();
-				processingEnv.getMessager().printMessage(Kind.WARNING,
-					"Can't force a new processing round. Lombok won't work.");
-			}
-		}
+		transformer.transform(javacProcessingEnv.getContext(), cusForThisRound);
+		return false;
 	}
 
 	private JCCompilationUnit toUnit(Element element) {
