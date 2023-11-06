@@ -99,6 +99,7 @@ public class EclipsePatcher implements AgentLauncher.AgentLaunchable {
 		patchJavadoc(sm);
 		patchASTConverterLiterals(sm);
 		patchASTNodeSearchUtil(sm);
+		patchFieldInitializer(sm);
 		
 		patchPostCompileHookEcj(sm);
 		
@@ -1015,6 +1016,42 @@ public class EclipsePatcher implements AgentLauncher.AgentLaunchable {
 				.request(StackRequest.RETURN_VALUE, StackRequest.PARAM1, StackRequest.PARAM2)
 				.transplant()
 				.build());
+	}
+	
+	private static void patchFieldInitializer(ScriptManager sm) {
+		sm.addScriptIfWitness(OSGI_TYPES, ScriptBuilder.addField()
+			.targetClass("org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor")
+			.fieldName("$fieldInfo")
+			.fieldType("Ljava/lang/Object;")
+			.build());
+		
+		sm.addScriptIfWitness(OSGI_TYPES, ScriptBuilder.addField()
+			.targetClass("org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor")
+			.fieldName("$sourceFieldElementInfo")
+			.fieldType("Lorg/eclipse/jdt/internal/core/SourceFieldElementInfo;")
+			.build());
+		
+		sm.addScriptIfWitness(OSGI_TYPES, ScriptBuilder.exitEarly()
+			.target(new MethodTarget("org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor", "exitField", "void", "int", "int", "int"))
+			.decisionMethod(new Hook("lombok.launch.PatchFixesHider$FieldInitializer", "storeFieldInfo", "boolean", "org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor"))
+			.request(StackRequest.THIS)
+			.transplant()
+			.build());
+		
+		sm.addScriptIfWitness(OSGI_TYPES, ScriptBuilder.wrapMethodCall()
+			.target(new MethodTarget("org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor", "exitField", "void", "int", "int", "int"))
+			.methodToWrap(new Hook("org.eclipse.jdt.internal.core.SourceFieldElementInfo", "<init>", "void"))
+			.wrapMethod(new Hook("lombok.launch.PatchFixesHider$FieldInitializer", "storeSourceFieldElementInfo", "void", "org.eclipse.jdt.internal.core.SourceFieldElementInfo", "org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor"))
+			.requestExtra(StackRequest.THIS)
+			.transplant()
+			.build());
+		
+		sm.addScriptIfWitness(OSGI_TYPES, ScriptBuilder.wrapReturnValue()
+			.target(new MethodTarget("org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor", "exitField", "void", "int", "int", "int"))
+			.wrapMethod(new Hook("lombok.launch.PatchFixesHider$FieldInitializer", "overwriteInitializer", "void", "org.eclipse.jdt.internal.core.CompilationUnitStructureRequestor"))
+			.request(StackRequest.THIS)
+			.transplant()
+			.build());
 	}
 	
 	private static void patchForTests(ScriptManager sm) {
